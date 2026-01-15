@@ -5,9 +5,11 @@ import express from "express";
 import cron from "node-cron";
 import nodemailer from "nodemailer";
 import expressLayouts from "express-ejs-layouts";
+import { FileUrlToPath } from "url";
 
 configDotenv();
 
+const __filename = url
 const __dirname = path.dirname();
 console.log(__dirname);
 
