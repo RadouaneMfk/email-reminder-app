@@ -7,6 +7,7 @@ import nodemailer from "nodemailer";
 import {fileURLToPath} from "url";
 import expressLayout from "express-ejs-layouts";
 import DbConnect from "./config/DbConnect.js"
+import Reminder from "./models/reminder.js";
 
 configDotenv();
 
@@ -24,6 +25,14 @@ app.set("layout", "layout");
 app.set("views", path.join(__dirname, "views"));
 
 DbConnect();
+
+const transporter = nodemailer.createTransport({
+	service: 'gmail',
+	auth: {
+		user: process.env.EMAIL_USER,
+		pass: process.env.EMAIL_PASS,
+	}
+})
 
 app.get("/", (req, res) => {
 	res.render("index", {
@@ -46,12 +55,56 @@ app.get("/schedule", (req, res) => {
 	});
 })
 
-app.get("/reminders", (req, res) => {
-	res.render("reminders", {
-		title: "email reminder app",
-		currentPage: "reminders",
-		reminders: []
-	})
+app.get("/reminders", async(req, res) => {
+	try {
+		const reminders = await Reminder.find().sort({scheduledTime: 1});
+		res.render("reminders", {
+			title: "email reminder app",
+			currentPage: "reminders",
+			reminders,
+		})
+	} catch (error) {
+		console.log(error.message);
+	}
+})
+
+app.post("/schedule", async(req, res) => {
+	try {
+		const {email, message, datetime} = req.body;
+
+		const reminder = new Reminder({
+			email,
+			message,
+			scheduledTime: new Date(datetime),
+		})
+		await reminder.save();
+		res.redirect("/schedule?success=true");
+	} catch (error) {
+		res.redirect("/schedule?error=true");
+	}
+})
+
+cron.schedule("* * * * *", async (req, res) => {
+	try {
+		const now = new Date();
+		const reminders = await Reminder.find({
+			scheduledTime: {$lte: now},
+			sent: false,
+		})
+		for (const reminder of reminders)
+		{
+			await transporter.sendMail({
+				from: process.env.EMAIL_USER,
+				to: reminder.email,
+				text: reminder.message,
+				subject: "email reminder app",
+			})
+			reminder.sent = true;
+			await reminder.save();
+		}
+	} catch (error) {
+		console.log("error in sending email", error);
+	}
 })
 
 app.listen(port, ()=> {

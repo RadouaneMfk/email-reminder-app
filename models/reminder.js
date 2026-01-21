@@ -12,7 +12,7 @@ const reminderShcema = new mongoose.Schema({
 		trim: true,
 	},
 	scheduledTime: {
-		type: String,
+		type: Date,
 		required: true,
 	},
 	sent: {
