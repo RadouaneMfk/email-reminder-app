@@ -8,6 +8,12 @@ import {fileURLToPath} from "url";
 import expressLayout from "express-ejs-layouts";
 import DbConnect from "./config/DbConnect.js"
 import Reminder from "./models/reminder.js";
+import { isNotAuthenticated, isAuthenticated } from "./middleware/auth.js";
+import { handleValidationErrors, loginValidation, registerValidation } from "./middleware/validators.js";
+import User from "./models/user.js";
+import passport from "./config/passport.js";
+import session from "express-session";
+import { info } from "console";
 
 configDotenv();
 
@@ -16,6 +22,17 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+app.use(
+	session({
+		secret: process.env.SESSION_SECRET,
+		resave: false,
+		saveUninitialized: false,
+	})
+)
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -44,68 +61,172 @@ app.get("/", (req, res) => {
 app.get("/about", (req, res) => {
 	res.render("about", {
 		title: "email reminder app",
-		currentPage: "about"
+		currentPage: "about",
 	});
 });
 
-app.get("/schedule", (req, res) => {
-	res.render("schedule", {
+app.get("/login", isNotAuthenticated, (req, res) => {
+	res.render("login", {
 		title: "email reminder app",
-		currentPage: "schedule",
+		currentPage: "login",
+	})
+})
+
+app.get("/register", isNotAuthenticated, (req, res) => {
+	res.render("register", {
+		title: "email reminder app",
+		currentPage: "register",
+	})
+})
+
+app.get("/dashboard",isAuthenticated, (req, res) => {
+	res.render("dashboard", {
+		title: "email reminder app",
+		currentPage: "dashboard",
+		user: req.user,
 	});
 })
 
-app.get("/reminders", async(req, res) => {
-	try {
-		const reminders = await Reminder.find().sort({scheduledTime: 1});
-		res.render("reminders", {
-			title: "email reminder app",
-			currentPage: "reminders",
-			reminders,
-		})
-	} catch (error) {
-		console.log(error.message);
+app.post("/register", 
+		isNotAuthenticated,
+ 		registerValidation,
+		handleValidationErrors,
+		async (req, res) => {
+			if (req.validationErrors) {
+				return res.render("register", {
+					title: "email reminder app",
+					currentPage: "register",
+					validationErrors: req.validationErrors,
+				});
+			}
+			try {
+				const {name, email, password} = req.body;
+
+				const existUser = await User.findOne({email});
+				if (existUser)
+				{
+					return res.render("register", {
+						title: "email reminder app",
+						currentPage: "register",
+						validationErrors: [{msg: "Email already registered!"}],
+					})
+				}
+				const user = new User({name, email, password});
+				await user.save();
+				req.login(user, (err) => {
+					if (err) {
+						console.error(err);
+						return res.redirect("register");
+					}
+					return res.redirect("dashboard");
+				});
+			} catch (error) {
+				console.error(error);
+				res.render("register", {
+					title: "email remider app",
+					currentPage: "register",
+					validationErrors: [{msg: "An error occured, please try again"}],
+				})
+			}
 	}
-})
+)
 
-app.post("/schedule", async(req, res) => {
-	try {
-		const {email, message, datetime} = req.body;
 
-		const reminder = new Reminder({
-			email,
-			message,
-			scheduledTime: new Date(datetime),
-		})
-		await reminder.save();
-		res.redirect("/schedule?success=true");
-	} catch (error) {
-		res.redirect("/schedule?error=true");
-	}
-})
+app.post("/login",
+		isNotAuthenticated,
+		loginValidation,
+		handleValidationErrors,
+		(req, res, next) => {
+			if (req.validationErrors)
+			{
+				res.render("login", {
+					title: "email reminder app",
+					currentPage: "login",
+					validationErrors: req.validationErrors,
+				})
+			}
 
-cron.schedule("* * * * *", async (req, res) => {
-	try {
-		const now = new Date();
-		const reminders = await Reminder.find({
-			scheduledTime: {$lte: now},
-			sent: false,
-		})
-		for (const reminder of reminders)
-		{
-			await transporter.sendMail({
-				from: process.env.EMAIL_USER,
-				to: reminder.email,
-				text: reminder.message,
-				subject: "email reminder app",
-			})
-			reminder.sent = true;
-			await reminder.save();
+			passport.authenticate("local", (err, user, info) => {
+				if (err)
+					return next(err);
+
+					if (!user) {
+						res.render("login", {
+							title: "email reminder app",
+							currentPage: "login",
+							validationErrors: [{msg: info.message || "ivalid credentials!"}],
+						})
+					}
+					
+					req.login(user, (err) => {
+						if (err){
+							console.error(err);
+							return res.redirect("login");
+						}
+						return res.redirect("dashboard");
+					})
+			})(req, res, next);
 		}
-	} catch (error) {
-		console.log("error in sending email", error);
-	}
-})
+);
+
+// app.get("/schedule", (req, res) => {
+// 	res.render("schedule", {
+// 		title: "email reminder app",
+// 		currentPage: "schedule",
+// 	});
+// })
+
+// app.get("/reminders", async(req, res) => {
+// 	try {
+// 		const reminders = await Reminder.find().sort({scheduledTime: 1});
+// 		res.render("reminders", {
+// 			title: "email reminder app",
+// 			currentPage: "reminders",
+// 			reminders,
+// 		})
+// 	} catch (error) {
+// 		console.log(error.message);
+// 	}
+// })
+
+// app.post("/schedule", async(req, res) => {
+// 	try {
+// 		const {email, message, datetime} = req.body;
+
+// 		const reminder = new Reminder({
+// 			email,
+// 			message,
+// 			scheduledTime: new Date(datetime),
+// 		})
+// 		await reminder.save();
+// 		res.redirect("/schedule?success=true");
+// 	} catch (error) {
+// 		res.redirect("/schedule?error=true");
+// 	}
+// })
+
+// cron.schedule("* * * * *", async (req, res) => {
+// 	try {
+// 		const now = new Date();
+// 		const reminders = await Reminder.find({
+// 			scheduledTime: {$lte: now},
+// 			sent: false,
+// 		})
+// 		for (const reminder of reminders)
+// 		{
+// 			await transporter.sendMail({
+// 				from: process.env.EMAIL_USER,
+// 				to: reminder.email,
+// 				text: reminder.message,
+// 				subject: "email reminder app",
+// 			})
+// 			reminder.sent = true;
+// 			await reminder.save();
+// 		}
+// 	} catch (error) {
+// 		console.log("error in sending email", error);
+// 	}
+// })
 
 app.listen(port, ()=> {
 	console.log(`server is running at http://localhost:${port}`);

@@ -9,5 +9,5 @@ export const isAuthenticated = (req, res, next) => {
 export const isNotAuthenticated = (req, res, next) => {
 	if (!req.isAuthenticated())
 		return next();
-	res.redirect("/reminders");
+	res.redirect("/dashboard");
 };
