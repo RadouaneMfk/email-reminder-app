@@ -14,6 +14,7 @@ import User from "./models/user.js";
 import passport from "./config/passport.js";
 import session from "express-session";
 import { info } from "console";
+import { scheduleValidation } from "./middleware/validators.js";
 
 configDotenv();
 
@@ -28,6 +29,12 @@ app.use(
 		secret: process.env.SESSION_SECRET,
 		resave: false,
 		saveUninitialized: false,
+		cookie: {
+			maxAge: 1000 * 60 * 60 * 24 * 7,
+			httpOnly: true,
+			secret: true,
+			sameSite: "lax",
+		},
 	})
 )
 
@@ -139,22 +146,21 @@ app.post("/login",
 		(req, res, next) => {
 			if (req.validationErrors)
 			{
-				res.render("login", {
+				return res.render("login", {
 					title: "email reminder app",
 					currentPage: "login",
-					validationErrors: req.validationErrors,
+					errors: req.validationErrors,
 				})
 			}
-
 			passport.authenticate("local", (err, user, info) => {
 				if (err)
 					return next(err);
 
 					if (!user) {
-						res.render("login", {
+						return res.render("login", {
 							title: "email reminder app",
 							currentPage: "login",
-							validationErrors: [{msg: info.message || "ivalid credentials!"}],
+							errors: [{msg: info.message || "Invalid email or password!"}],
 						})
 					}
 					
@@ -169,12 +175,46 @@ app.post("/login",
 		}
 );
 
-// app.get("/schedule", (req, res) => {
-// 	res.render("schedule", {
-// 		title: "email reminder app",
-// 		currentPage: "schedule",
-// 	});
-// })
+app.post("/logout", (req, res, next) => {
+	if (req.session) {
+		req.session.destroy((err) => {
+			if (err)
+				return next(err);
+			res.redirect("/");
+		})
+	}
+})
+
+app.get("/schedule", isAuthenticated, (req, res) => {
+	res.render("schedule", {
+		title: "email reminder app",
+		currentPage: "schedule",
+	});
+})
+
+app.get("/reminders", isAuthenticated, async (req, res) => {
+	res.render("reminders", {
+		title: "email reminder app",
+		currentPage: "reminders",
+		reminders: [],
+	});
+})
+
+app.post("/schedule",
+		isAuthenticated,
+		scheduleValidation,
+		handleValidationErrors,
+		async (req, res, next) => {
+			if (req.validationErrors)
+			{
+				return res.render("schedule", {
+					title: "email reminder app",
+					currentPage: "schedule",
+					error: req.validationErrors[0],
+				})
+			}
+			
+})
 
 // app.get("/reminders", async(req, res) => {
 // 	try {

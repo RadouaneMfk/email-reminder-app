@@ -34,6 +34,26 @@ export const loginValidation = [
 	.notEmpty().withMessage("password is required")
 ];
 
+export const scheduleValidation = [
+	body("email").trim()
+	.notEmpty().withMessage("email is required")
+	.isEmail().withMessage("please provide a valid email")
+	.normalizeEmail(),
+
+	body("message").trim()
+	.notEmpty().withMessage("message is required"),
+
+	body("datetime").trim()
+	.notEmpty().withMessage("Date and Time is required")
+	.custom(value => {
+		const sheduledTime = new Date(value);
+		if (sheduledTime <= new Date()) {
+			throw new Error('scheduled time must be in the future');
+		}
+		return true;
+	}),
+];
+
 export const handleValidationErrors = (req, res, next) => {
 	const errors = validationResult(req);
 

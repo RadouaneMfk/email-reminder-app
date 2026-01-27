@@ -45,8 +45,8 @@
 <section class="schedule-section">
   <div class="container">
     <div class="schedule-card">
-      <a href="/" class="back-link">
-        <i class="bi bi-arrow-left me-2"></i>Back to Home
+      <a href="/dashboard" class="back-link">
+        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
       </a>
 
       <div class="schedule-header">
@@ -62,7 +62,8 @@
       <% } %> <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger d-flex align-items-center" role="alert">
         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-        <div>Error scheduling reminder. Please try again.</div>
+        <!-- <div>Error scheduling reminder. Please try again.</div> -->
+        <div><%= error.msg %> </div>
       </div>
       <% } %>
 
