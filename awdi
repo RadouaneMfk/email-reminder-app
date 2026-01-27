@@ -1,0 +1,6 @@
+MONGO_URI=mongodb+srv://businessrdwan_db_user:0lfEpyt5TX0ZVHjL@email-reminder.vkm06sh.mongodb.net/?appName=email-reminder
+PORT=3000
+EMAIL_USER=rami00mohamed33@gmail.com
+EMAIL_PASS=lgmo djfp fnzn cjsz
+SESSION_SECRET=01b6739c07d856b6d42405617448a7e9dc11db152cb0ce63e0ccf5b3100da886
+NODE_ENV=development%
