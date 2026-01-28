@@ -41,7 +41,8 @@ export const scheduleValidation = [
 	.normalizeEmail(),
 
 	body("message").trim()
-	.notEmpty().withMessage("message is required"),
+	.notEmpty().withMessage("message is required")
+	.isLength({min: 5}).withMessage("message must be at least 5 characters"),
 
 	body("datetime").trim()
 	.notEmpty().withMessage("Date and Time is required")

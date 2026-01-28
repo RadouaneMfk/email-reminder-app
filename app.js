@@ -13,7 +13,6 @@ import { handleValidationErrors, loginValidation, registerValidation } from "./m
 import User from "./models/user.js";
 import passport from "./config/passport.js";
 import session from "express-session";
-import { info } from "console";
 import { scheduleValidation } from "./middleware/validators.js";
 
 configDotenv();
@@ -189,22 +188,36 @@ app.get("/schedule", isAuthenticated, (req, res) => {
 	res.render("schedule", {
 		title: "email reminder app",
 		currentPage: "schedule",
+		success: req.query.success,
+		error: req.query.error,
 	});
 })
 
 app.get("/reminders", isAuthenticated, async (req, res) => {
-	res.render("reminders", {
-		title: "email reminder app",
-		currentPage: "reminders",
-		reminders: [],
-	});
+	try {
+		const reminders = await Reminder.find({
+			userId: req.user.id,
+		}).sort({scheduledTime: 1});
+		res.render("reminders", {
+			title: "email reminder app",
+			currentPage: "reminders",
+			reminders: reminders,
+		});
+	} catch (error) {
+		console.error(error);
+		res.render("reminders", {
+			title: "email reminder app",
+			currentPage: "reminders",
+			reminders: [],
+		})
+	}
 })
 
 app.post("/schedule",
 		isAuthenticated,
 		scheduleValidation,
 		handleValidationErrors,
-		async (req, res, next) => {
+		async (req, res) => {
 			if (req.validationErrors)
 			{
 				return res.render("schedule", {
@@ -213,37 +226,56 @@ app.post("/schedule",
 					error: req.validationErrors[0],
 				})
 			}
-			
+		try {
+			const {email, message, datetime} = req.body;
+			const reminder = new Reminder({
+				userId: req.user.id,
+				email,
+				message,
+				scheduledTime: new Date(datetime),
+			})
+			await reminder.save();
+			return res.redirect("schedule?success=true");
+		} catch (error) {
+			console.error(error);
+			return res.render("schedule", {
+				title: "email reminder app",
+				currentPage: "schedule",
+				error: {msg: "Error scheduling reminder. Please try again."},
+			});
+		}
 })
 
-// app.get("/reminders", async(req, res) => {
-// 	try {
-// 		const reminders = await Reminder.find().sort({scheduledTime: 1});
-// 		res.render("reminders", {
-// 			title: "email reminder app",
-// 			currentPage: "reminders",
-// 			reminders,
-// 		})
-// 	} catch (error) {
-// 		console.log(error.message);
-// 	}
-// })
+app.post("/reminders/delete/:id", async (req, res) => {
+	try {
+		await Reminder.findByIdAndDelete({
+			_id: req.params.id,
+			userId: req.user.id,
+		})
+		return res.redirect("/reminders");
+	} catch (error) {
+		console.error(error);
+		return res.redirect("reminders");
+	}
+})
 
-// app.post("/schedule", async(req, res) => {
-// 	try {
-// 		const {email, message, datetime} = req.body;
-
-// 		const reminder = new Reminder({
-// 			email,
-// 			message,
-// 			scheduledTime: new Date(datetime),
-// 		})
-// 		await reminder.save();
-// 		res.redirect("/schedule?success=true");
-// 	} catch (error) {
-// 		res.redirect("/schedule?error=true");
-// 	}
-// })
+app.get("/reminders/edit/:id", isAuthenticated, async (req, res) => {
+try {
+		const reminder = await Reminder.findById(req.params.id);
+	
+		if (!reminder)
+			return res.redirect("/reminders");
+	
+		return res.render("edit-reminder", {
+			title: "email reminder app",
+			currentPage: "edit-reminder",
+			reminder,
+		})
+} catch (error) {
+	console.error(error);
+	return res.render("/reminders");
+}
+})
 
 // cron.schedule("* * * * *", async (req, res) => {
 // 	try {
