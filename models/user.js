@@ -13,12 +13,19 @@ const userSchema = new mongoose.Schema({
 		unique: true,
 		lowercase: true,
 		trim: true,
+		immutable: true,
 	},
 	password: {
 		type: String,
 		required: true,
 		minlength: 8,
 	},
+	isVerified: {
+		type: Boolean,
+		default: false,
+	},
+	OTPcode: String,
+	OTPexpiry: Date,
 	createdAt: {
 		type: Date,
 		default: Date.now,
@@ -34,6 +41,9 @@ userSchema.pre("save", async function () {
 
 userSchema.methods.comparePassword = async function(inputPassword) {
 	return await bcrypt.compare(inputPassword, this.password);
+}
+userSchema.methods.compareOTP = async function(inputCode) {
+	return await bcrypt.compare(inputCode, this.OTPcode);
 }
 
 const User = mongoose.model("User", userSchema);

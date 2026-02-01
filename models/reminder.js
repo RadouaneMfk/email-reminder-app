@@ -10,6 +10,7 @@ const reminderShcema = new mongoose.Schema({
 		type: String,
 		required: true,
 		trim: true,
+		immutable: true,
 	},
 	message: {
 		type: String,

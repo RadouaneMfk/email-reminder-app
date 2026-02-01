@@ -8,6 +8,12 @@ export const isAuthenticated = (req, res, next) => {
 
 export const isNotAuthenticated = (req, res, next) => {
 	if (!req.isAuthenticated())
+	return next();
+res.redirect("/dashboard");
+};
+
+export const isUserVerified = (req, res, next) => {
+	if (req.user.isVerified)
 		return next();
-	res.redirect("/dashboard");
+	res.redirect("/verify-email");
 };

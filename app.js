@@ -14,6 +14,7 @@ import User from "./models/user.js";
 import passport from "./config/passport.js";
 import session from "express-session";
 import { scheduleValidation } from "./middleware/validators.js";
+import bcrypt from "bcrypt";
 
 configDotenv();
 
@@ -114,17 +115,28 @@ app.post("/register",
 					return res.render("register", {
 						title: "email reminder app",
 						currentPage: "register",
-						validationErrors: [{msg: "Email already registered!"}],
+						validationErrors: [{msg: "user already registered!"}],
 					})
 				}
 				const user = new User({name, email, password});
 				await user.save();
+				const code = String(Math.floor(100000 + Math.random() * 900000));
+				const salt = await bcrypt.genSalt(10);
+				user.OTPcode = await bcrypt.hash(code, salt);
+				user.OTPexpiry = Date.now() + 10 * 60 * 1000;
+				await user.save();
+				await transporter.sendMail({
+					from: process.env.EMAIL_USER,
+					to: user.email,
+					subject: "your account verification code",
+					text: `your verification code is ${code}, will expiry in 10 minutes`,
+				})
 				req.login(user, (err) => {
 					if (err) {
 						console.error(err);
 						return res.redirect("register");
 					}
-					return res.redirect("dashboard");
+					return res.redirect("verify-email");
 				});
 			} catch (error) {
 				console.error(error);
@@ -137,6 +149,39 @@ app.post("/register",
 	}
 )
 
+app.get("/verify-email", isAuthenticated, async (req, res) => {
+	res.render("verify-email", {
+		title: "email reminder app",
+		currentPage: "verify-email",
+	})
+})
+
+app.post("/verify-email", isAuthenticated, async (req, res) => {
+	try {
+		const {code} = req.body;
+		const user = await User.findById(req.user.id);
+		const isMatchOTP = await user.compareOTP(code);
+		if (!isMatchOTP)
+		{
+			return res.render("verify-email", {
+				title: "email reminder app",
+				currentPage: "verify-email",
+				error: "code invalid or has been expired!",
+			})
+		}
+		user.isVerified = true;
+		user.OTPcode = undefined;
+		user.OTPexpiry = undefined;
+		await user.save();
+		return res.render("dashboard", {
+			title: "email reminder app",
+			currentPage: "dashboard",
+			user,
+		})
+	} catch (error) {
+		console.error(error);
+	}
+})
 
 app.post("/login",
 		isNotAuthenticated,
@@ -189,6 +234,7 @@ app.get("/schedule", isAuthenticated, (req, res) => {
 		title: "email reminder app",
 		currentPage: "schedule",
 		success: req.query.success,
+		userEmail: req.user.email,
 		error: req.query.error,
 	});
 })
@@ -223,14 +269,15 @@ app.post("/schedule",
 				return res.render("schedule", {
 					title: "email reminder app",
 					currentPage: "schedule",
+					userEmail: req.user.email,
 					error: req.validationErrors[0],
 				})
 			}
 		try {
-			const {email, message, datetime} = req.body;
+			const {message, datetime} = req.body;
 			const reminder = new Reminder({
 				userId: req.user.id,
-				email,
+				email: req.user.email,
 				message,
 				scheduledTime: new Date(datetime),
 			})
@@ -241,12 +288,13 @@ app.post("/schedule",
 			return res.render("schedule", {
 				title: "email reminder app",
 				currentPage: "schedule",
+				userEmail: req.user.email,
 				error: {msg: "Error scheduling reminder. Please try again."},
 			});
 		}
 })
 
-app.post("/reminders/delete/:id", async (req, res) => {
+app.post("/reminders/delete/:id", isAuthenticated, async (req, res) => {
 	try {
 		await Reminder.findByIdAndDelete({
 			_id: req.params.id,
@@ -277,28 +325,59 @@ try {
 }
 })
 
-// cron.schedule("* * * * *", async (req, res) => {
-// 	try {
-// 		const now = new Date();
-// 		const reminders = await Reminder.find({
-// 			scheduledTime: {$lte: now},
-// 			sent: false,
-// 		})
-// 		for (const reminder of reminders)
-// 		{
-// 			await transporter.sendMail({
-// 				from: process.env.EMAIL_USER,
-// 				to: reminder.email,
-// 				text: reminder.message,
-// 				subject: "email reminder app",
-// 			})
-// 			reminder.sent = true;
-// 			await reminder.save();
-// 		}
-// 	} catch (error) {
-// 		console.log("error in sending email", error);
-// 	}
-// })
+app.post("/reminders/edit/:id", isAuthenticated,
+		scheduleValidation,
+		handleValidationErrors,
+		async (req, res) => {
+			const reminder = await Reminder.findById(req.params.id);
+			if (req.validationErrors) {
+				return res.render("edit-reminder", {
+					title: "email reminder app",
+					currentPage: "edit-reminder",
+					reminder,
+					error: req.validationErrors[0],
+				})
+			}
+	try {
+		const {message, datetime} = req.body;
+		const {id} = req.params;
+
+		await Reminder.findByIdAndUpdate(id, {
+			message,
+			scheduledTime: datetime,
+		},
+		{
+			new: true,
+			runValidators: true,
+		})
+		return res.redirect("/reminders");
+	} catch (error) {
+		console.error(error);
+	}
+})
+
+cron.schedule("* * * * *", async (req, res) => {
+	try {
+		const now = new Date();
+		const reminders = await Reminder.find({
+			scheduledTime: {$lte: now},
+			sent: false,
+		})
+		for (const reminder of reminders)
+		{
+			await transporter.sendMail({
+				from: process.env.EMAIL_USER,
+				to: reminder.email,
+				text: reminder.message,
+				subject: "email reminder app",
+			})
+			reminder.sent = true;
+			await reminder.save();
+		}
+	} catch (error) {
+		console.log("error in sending email", error);
+	}
+})
 
 app.listen(port, ()=> {
 	console.log(`server is running at http://localhost:${port}`);

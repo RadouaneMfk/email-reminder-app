@@ -35,11 +35,6 @@ export const loginValidation = [
 ];
 
 export const scheduleValidation = [
-	body("email").trim()
-	.notEmpty().withMessage("email is required")
-	.isEmail().withMessage("please provide a valid email")
-	.normalizeEmail(),
-
 	body("message").trim()
 	.notEmpty().withMessage("message is required")
 	.isLength({min: 5}).withMessage("message must be at least 5 characters"),

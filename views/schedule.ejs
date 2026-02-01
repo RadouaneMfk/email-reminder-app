@@ -71,13 +71,12 @@
         <div class="mb-4">
           <label for="email" class="form-label">Email Address</label>
           <input
-            type="email"
             class="form-control"
-            id="email"
-            name="email"
-            placeholder="Enter your email address"
-            required
+            type="email"
+            value="<%= userEmail %>"
+            disabled
           />
+          <small>this is your verified email</small>
         </div>
 
         <div class="mb-4">
