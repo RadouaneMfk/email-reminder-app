@@ -15,6 +15,8 @@ import passport from "./config/passport.js";
 import session from "express-session";
 import { scheduleValidation } from "./middleware/validators.js";
 import bcrypt from "bcrypt";
+import { isUserVerified } from "./middleware/auth.js";
+import { sentOtpCode } from "./middleware/auth.js";
 
 configDotenv();
 
@@ -50,7 +52,7 @@ app.set("views", path.join(__dirname, "views"));
 
 DbConnect();
 
-const transporter = nodemailer.createTransport({
+export const transporter = nodemailer.createTransport({
 	service: 'gmail',
 	auth: {
 		user: process.env.EMAIL_USER,
@@ -86,7 +88,7 @@ app.get("/register", isNotAuthenticated, (req, res) => {
 	})
 })
 
-app.get("/dashboard",isAuthenticated, (req, res) => {
+app.get("/dashboard", isAuthenticated, isUserVerified, (req, res) => {
 	res.render("dashboard", {
 		title: "email reminder app",
 		currentPage: "dashboard",
@@ -120,23 +122,17 @@ app.post("/register",
 				}
 				const user = new User({name, email, password});
 				await user.save();
-				const code = String(Math.floor(100000 + Math.random() * 900000));
-				const salt = await bcrypt.genSalt(10);
-				user.OTPcode = await bcrypt.hash(code, salt);
-				user.OTPexpiry = Date.now() + 10 * 60 * 1000;
-				await user.save();
-				await transporter.sendMail({
-					from: process.env.EMAIL_USER,
-					to: user.email,
-					subject: "your account verification code",
-					text: `your verification code is ${code}, will expiry in 10 minutes`,
-				})
+				await sentOtpCode(user);
 				req.login(user, (err) => {
 					if (err) {
 						console.error(err);
 						return res.redirect("register");
 					}
-					return res.redirect("verify-email");
+					return res.render("verify-email", {
+						title: "email reminder app",
+						currentPage: "verify-email",
+						email: user.email,
+					});
 				});
 			} catch (error) {
 				console.error(error);
@@ -150,9 +146,11 @@ app.post("/register",
 )
 
 app.get("/verify-email", isAuthenticated, async (req, res) => {
+	const user = await User.findById(req.user.id);
 	res.render("verify-email", {
 		title: "email reminder app",
 		currentPage: "verify-email",
+		email: user.email,
 	})
 })
 
@@ -160,6 +158,15 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 	try {
 		const {code} = req.body;
 		const user = await User.findById(req.user.id);
+		if (!user.OTPexpiry || user.OTPexpiry < Date.now())
+		{
+			return res.render("verify-email", {
+				title: "email reminder app",
+				currentPage: "verify-email",
+				error: "code invalid or has been expired!",
+				email: user.email,
+			})
+		}
 		const isMatchOTP = await user.compareOTP(code);
 		if (!isMatchOTP)
 		{
@@ -167,17 +174,22 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 				title: "email reminder app",
 				currentPage: "verify-email",
 				error: "code invalid or has been expired!",
+				email: user.email,
 			})
 		}
 		user.isVerified = true;
 		user.OTPcode = undefined;
 		user.OTPexpiry = undefined;
 		await user.save();
-		return res.render("dashboard", {
-			title: "email reminder app",
-			currentPage: "dashboard",
-			user,
-		})
+		if (user.isVerified) {
+			req.login(user, (err) => {
+				if (err) {
+					console.error(err);
+					return res.redirect("register");
+				}
+				return res.redirect("dashboard");
+			});
+		}
 	} catch (error) {
 		console.error(error);
 	}
@@ -196,7 +208,7 @@ app.post("/login",
 					errors: req.validationErrors,
 				})
 			}
-			passport.authenticate("local", (err, user, info) => {
+			passport.authenticate("local", async (err, user, info) => {
 				if (err)
 					return next(err);
 
@@ -207,19 +219,31 @@ app.post("/login",
 							errors: [{msg: info.message || "Invalid email or password!"}],
 						})
 					}
-					
-					req.login(user, (err) => {
-						if (err){
-							console.error(err);
+					if (!user.isVerified) {
+						if (!user.OTPexpiry || user.OTPexpiry < Date.now())
+							await sentOtpCode(user);
+						return req.login(user, (err) => {
+							if (err) {
+								console.error(err);
+								return res.redirect("login");
+							}
+							return res.redirect("verify-email");
+						})
+					}
+					return req.login(user, (err)=> {
+						if (err)
 							return res.redirect("login");
-						}
-						return res.redirect("dashboard");
+						return res.render("dashboard", {
+							title: "email reminder app",
+							currentPage: "dashboard",
+							user,
+						});
 					})
 			})(req, res, next);
 		}
 );
 
-app.post("/logout", (req, res, next) => {
+app.post("/logout", isAuthenticated, (req, res, next) => {
 	if (req.session) {
 		req.session.destroy((err) => {
 			if (err)
@@ -229,7 +253,7 @@ app.post("/logout", (req, res, next) => {
 	}
 })
 
-app.get("/schedule", isAuthenticated, (req, res) => {
+app.get("/schedule", isAuthenticated, isUserVerified, (req, res) => {
 	res.render("schedule", {
 		title: "email reminder app",
 		currentPage: "schedule",
@@ -239,7 +263,7 @@ app.get("/schedule", isAuthenticated, (req, res) => {
 	});
 })
 
-app.get("/reminders", isAuthenticated, async (req, res) => {
+app.get("/reminders", isAuthenticated, isUserVerified, async (req, res) => {
 	try {
 		const reminders = await Reminder.find({
 			userId: req.user.id,
@@ -261,6 +285,7 @@ app.get("/reminders", isAuthenticated, async (req, res) => {
 
 app.post("/schedule",
 		isAuthenticated,
+		isUserVerified,
 		scheduleValidation,
 		handleValidationErrors,
 		async (req, res) => {
@@ -294,7 +319,7 @@ app.post("/schedule",
 		}
 })
 
-app.post("/reminders/delete/:id", isAuthenticated, async (req, res) => {
+app.post("/reminders/delete/:id", isAuthenticated, isUserVerified, async (req, res) => {
 	try {
 		await Reminder.findByIdAndDelete({
 			_id: req.params.id,
@@ -307,7 +332,7 @@ app.post("/reminders/delete/:id", isAuthenticated, async (req, res) => {
 	}
 })
 
-app.get("/reminders/edit/:id", isAuthenticated, async (req, res) => {
+app.get("/reminders/edit/:id", isAuthenticated, isUserVerified, async (req, res) => {
 try {
 		const reminder = await Reminder.findById(req.params.id);
 	
@@ -326,6 +351,7 @@ try {
 })
 
 app.post("/reminders/edit/:id", isAuthenticated,
+		isUserVerified,
 		scheduleValidation,
 		handleValidationErrors,
 		async (req, res) => {
