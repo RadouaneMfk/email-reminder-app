@@ -17,6 +17,7 @@ import { scheduleValidation } from "./middleware/validators.js";
 import bcrypt from "bcrypt";
 import { isUserVerified } from "./middleware/auth.js";
 import { sentOtpCode } from "./middleware/auth.js";
+import {ReSentOtpCode} from "./middleware/auth.js";
 
 configDotenv();
 
@@ -42,6 +43,11 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.use((req, res, next) => {
+	res.locals.user = req.user || null;
+	next();
+});
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -180,6 +186,7 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 		user.isVerified = true;
 		user.OTPcode = undefined;
 		user.OTPexpiry = undefined;
+		user.OTPlastSendAt = undefined;
 		await user.save();
 		if (user.isVerified) {
 			req.login(user, (err) => {
@@ -192,6 +199,29 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 		}
 	} catch (error) {
 		console.error(error);
+	}
+})
+
+app.post("/resend-verification", isAuthenticated, async (req, res) => {
+	try {
+		const user = await User.findById(req.user.id);
+		if (user.isVerified)
+			return res.redirect("dashboard");
+		await ReSentOtpCode(user);
+
+		return res.render("verify-email", {
+			title: "email reminder app",
+			currentPage: "verify-email",
+			email: user.email,
+			success: "another verification code has been sent to you email!",
+		})
+	} catch (error) {
+		return res.render("verify-email", {
+			title: "email reminder app",
+			currentPage: "verify-email",
+			email: req.user.email,
+			error: error.message || "please wait before requesting another code!",
+		})
 	}
 })
 
@@ -321,10 +351,11 @@ app.post("/schedule",
 
 app.post("/reminders/delete/:id", isAuthenticated, isUserVerified, async (req, res) => {
 	try {
-		await Reminder.findByIdAndDelete({
+		await Reminder.findOneAndDelete({
 			_id: req.params.id,
 			userId: req.user.id,
-		})
+			sent: false,
+		});
 		return res.redirect("/reminders");
 	} catch (error) {
 		console.error(error);
@@ -334,9 +365,12 @@ app.post("/reminders/delete/:id", isAuthenticated, isUserVerified, async (req, r
 
 app.get("/reminders/edit/:id", isAuthenticated, isUserVerified, async (req, res) => {
 try {
-		const reminder = await Reminder.findById(req.params.id);
+		const reminder = await Reminder.findOne({
+			_id: req.params.id,
+			userId: req.user.id,
+		})
 	
-		if (!reminder)
+		if (!reminder || reminder.sent)
 			return res.redirect("/reminders");
 	
 		return res.render("edit-reminder", {
@@ -355,7 +389,12 @@ app.post("/reminders/edit/:id", isAuthenticated,
 		scheduleValidation,
 		handleValidationErrors,
 		async (req, res) => {
-			const reminder = await Reminder.findById(req.params.id);
+			const reminder = await Reminder.findOne({
+				_id: req.params.id,
+				userId: req.user.id,
+			})
+			if (!reminder || reminder.sent)
+				return res.redirect("/reminders");
 			if (req.validationErrors) {
 				return res.render("edit-reminder", {
 					title: "email reminder app",
@@ -368,7 +407,13 @@ app.post("/reminders/edit/:id", isAuthenticated,
 		const {message, datetime} = req.body;
 		const {id} = req.params;
 
-		await Reminder.findByIdAndUpdate(id, {
+		await Reminder.findByIdAndUpdate(
+		{
+			_id: id,
+			userId: req.user.id,
+			sent: false,
+		},
+		{
 			message,
 			scheduledTime: datetime,
 		},

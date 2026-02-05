@@ -23,6 +23,26 @@ export async function sentOtpCode(user) {
 	const salt = await bcrypt.genSalt(10);
 	user.OTPcode = await bcrypt.hash(code, salt);
 	user.OTPexpiry = Date.now() + 10 * 60 * 1000;
+	user.OTPlastSendAt = Date.now();
+	await user.save();
+	await transporter.sendMail({
+		from: process.env.EMAIL_USER,
+		to: user.email,
+		subject: "your account verification code",
+		text: `your verification code is ${code}, will expiry in 10 minutes`,
+	})
+}
+
+export async function ReSentOtpCode(user) {
+	const now = Date.now();
+
+	if (user.OTPexpiry && now - user.OTPlastSendAt < 60 * 1000)
+		throw new Error("please wait 1 minute before request new code");
+	const code = String(Math.floor(100000 + Math.random() * 900000));
+	const salt = await bcrypt.genSalt(10);
+	user.OTPcode = await bcrypt.hash(code, salt);
+	user.OTPexpiry = Date.now() + 10 * 60 * 1000;
+	user.OTPlastSendAt = now;
 	await user.save();
 	await transporter.sendMail({
 		from: process.env.EMAIL_USER,

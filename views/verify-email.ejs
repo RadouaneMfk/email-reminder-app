@@ -22,8 +22,7 @@
       content: "";
       position: absolute;
       inset: 0;
-      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.1)" /></svg>')
-        repeat;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.1)" /></svg>') repeat;
       opacity: 0.1;
     }
 
@@ -98,10 +97,35 @@
       font-size: 0.95rem;
     }
 
-    .resend a {
+    .resend button {
+      background: none;
+      border: none;
+      padding: 0;
       color: var(--primary-color);
       font-weight: 600;
-      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .resend button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .alert-danger {
+      background: #ffe5e5;
+      color: #b30000;
+    }
+
+    .alert-success {
+      background: #e6ffed;
+      color: #1a7f37;
     }
   </style>
 </head>
@@ -123,10 +147,15 @@
             Please enter it below to continue.
           </p>
 
-          <!-- Errors -->
           <% if (typeof error !== "undefined") { %>
             <div class="alert alert-danger">
               <%= error %>
+            </div>
+          <% } %>
+
+          <% if (typeof success !== "undefined") { %>
+            <div class="alert alert-success">
+              <%= success %>
             </div>
           <% } %>
 
@@ -139,7 +168,6 @@
               maxlength="6"
               required
             />
-
             <button type="submit" class="auth-btn">
               <i class="bi bi-shield-check me-2"></i>
               Verify Email
@@ -148,7 +176,10 @@
 
           <div class="resend">
             Didn’t receive the code?
-            <a href="/resend-verification">Resend</a>
+            <form action="/resend-verification" method="POST" id="resendForm" style="display:inline;">
+              <button type="submit" id="resendBtn">Resend</button>
+              <span id="timer" style="display:none; margin-left:8px;"></span>
+            </form>
           </div>
 
         </div>
@@ -156,6 +187,55 @@
     </div>
   </div>
 </section>
+
+<script>
+  const resendBtn = document.getElementById("resendBtn");
+  const timerText = document.getElementById("timer");
+
+  const COOLDOWN_SECONDS = 60;
+  const STORAGE_KEY = "otpResendCooldownEnd";
+
+  let interval;
+
+  function startTimer(remaining) {
+    resendBtn.disabled = true;
+    timerText.style.display = "inline";
+    timerText.textContent = `(${remaining}s)`;
+
+    interval = setInterval(() => {
+      remaining--;
+      timerText.textContent = `(${remaining}s)`;
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        resendBtn.disabled = false;
+        timerText.style.display = "none";
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }, 1000);
+  }
+
+  // When resend is clicked, store cooldown end time
+  resendBtn?.addEventListener("click", () => {
+    const cooldownEnd = Date.now() + COOLDOWN_SECONDS * 1000;
+    localStorage.setItem(STORAGE_KEY, cooldownEnd);
+  });
+
+  // On page load, check if cooldown still active
+  window.addEventListener("load", () => {
+    const cooldownEnd = localStorage.getItem(STORAGE_KEY);
+
+    if (cooldownEnd) {
+      const remaining = Math.floor((cooldownEnd - Date.now()) / 1000);
+      if (remaining > 0) {
+        startTimer(remaining);
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  });
+</script>
+
 
 </body>
 </html>

@@ -4,18 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= title || 'Email Reminder App' %></title>
+
+    <!-- Bootstrap -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+
+    <!-- Bootstrap Icons -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
     />
+
+    <!-- Google Font -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+
     <style>
       :root {
         --primary-color: #34a853;
@@ -40,7 +47,6 @@
         backdrop-filter: blur(10px);
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         padding: 15px 0;
-        transition: all 0.3s ease;
       }
 
       .navbar-brand {
@@ -52,27 +58,17 @@
       .nav-link {
         font-weight: 600;
         color: #495057 !important;
-        transition: all 0.3s ease;
         padding: 0.5rem 1rem;
-        margin: 0 0.25rem;
         border-radius: 8px;
         display: flex;
         align-items: center;
         gap: 0.5rem;
-      }
-
-      .nav-link i {
-        font-size: 1.1rem;
-        transition: transform 0.3s ease;
+        transition: all 0.3s ease;
       }
 
       .nav-link:hover {
         color: var(--primary-color) !important;
         background-color: rgba(52, 168, 83, 0.05);
-      }
-
-      .nav-link:hover i {
-        transform: translateY(-2px);
       }
 
       .nav-link.active {
@@ -83,40 +79,21 @@
       .btn-primary {
         background: var(--gradient);
         border: none;
-        padding: 0.75rem 2rem;
+        padding: 0.6rem 1.5rem;
         border-radius: 50px;
         font-weight: 600;
-        transition: transform 0.3s ease;
-      }
-
-      .btn-primary:hover {
-        transform: translateY(-2px);
-      }
-
-      .form-control {
-        border-radius: 10px;
-        padding: 0.75rem 1rem;
-        border: 1px solid #e0e0e0;
-      }
-
-      .form-control:focus {
-        box-shadow: 0 0 0 0.25rem rgba(52, 168, 83, 0.15);
-        border-color: var(--primary-color);
-      }
-
-      .form-label {
-        font-weight: 500;
-        color: #495057;
       }
     </style>
   </head>
+
   <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+    <nav class="navbar navbar-expand-lg fixed-top">
       <div class="container">
         <a class="navbar-brand" href="/">
           <i class="bi bi-envelope-check me-2"></i>Email Reminder
         </a>
+
         <button
           class="navbar-toggler"
           type="button"
@@ -125,49 +102,83 @@
         >
           <span class="navbar-toggler-icon"></span>
         </button>
+
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
+          <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+
+            <!-- Always visible -->
             <li class="nav-item">
               <a
                 class="nav-link <%= currentPage === 'home' ? 'active' : '' %>"
                 href="/"
               >
-                <i class="bi bi-house-door"></i>
-                Home
+                <i class="bi bi-house-door"></i> Home
               </a>
             </li>
-            <li class="nav-item">
-              <a
-                class="nav-link <%= currentPage === 'login' ? 'active' : '' %>"
-                href="/login"
-              >
-                <i class="bi bi-list-check"></i>
-               Login
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                class="nav-link <%= currentPage === 'register' ? 'active' : '' %>"
-                href="/register"
-              >
-                <i class="bi bi-calendar-plus"></i>
-                Register
-              </a>
-            </li>
+
             <li class="nav-item">
               <a
                 class="nav-link <%= currentPage === 'about' ? 'active' : '' %>"
                 href="/about"
               >
-                <i class="bi bi-info-circle"></i>
-                About
+                <i class="bi bi-info-circle"></i> About
               </a>
             </li>
+
+            <% if (!user) { %>
+              <!-- NOT AUTHENTICATED -->
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentPage === 'login' ? 'active' : '' %>"
+                  href="/login"
+                >
+                  <i class="bi bi-box-arrow-in-right"></i> Login
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentPage === 'register' ? 'active' : '' %>"
+                  href="/register"
+                >
+                  <i class="bi bi-person-plus"></i> Register
+                </a>
+              </li>
+            <% } else { %>
+              <!-- AUTHENTICATED -->
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentPage === 'dashboard' ? 'active' : '' %>"
+                  href="/dashboard"
+                >
+                  <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a
+                  class="nav-link <%= currentPage === 'reminders' ? 'active' : '' %>"
+                  href="/reminders"
+                >
+                  <i class="bi bi-bell"></i> Reminders
+                </a>
+              </li>
+
+              <li class="nav-item ms-lg-2">
+                <form action="/logout" method="POST">
+                  <button class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-box-arrow-right me-1"></i> Logout
+                  </button>
+                </form>
+              </li>
+            <% } %>
+
           </ul>
         </div>
       </div>
     </nav>
 
+    <!-- Page Content -->
     <%- body %>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

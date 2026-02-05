@@ -1,148 +1,85 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>All Reminders - Email Reminder App</title>
+<div class="container py-5">
 
-    <!-- Bootstrap -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <h2 class="fw-bold mb-0">
+      <i class="bi bi-envelope-check me-2"></i>All Reminders
+    </h2>
 
-    <!-- Bootstrap Icons -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
-    />
+    <div class="d-flex gap-2">
+      <a href="/schedule" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Schedule
+      </a>
 
-    <style>
-      .reminders-container {
-        max-width: 900px;
-        margin: 30px auto;
-        padding: 30px;
-      }
+      <a href="/dashboard" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Dashboard
+      </a>
+    </div>
+  </div>
 
-      .table {
-        background: white;
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-      }
+  <!-- Table -->
+  <div class="table-responsive">
+    <table class="table table-hover align-middle bg-white shadow-sm rounded overflow-hidden">
+      <thead class="table-primary">
+        <tr>
+          <th>Email</th>
+          <th class="d-none d-sm-table-cell">Message</th>
+          <th class="d-none d-sm-table-cell">Scheduled</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
 
-      .table thead th {
-        background: linear-gradient(135deg, #0d6efd, #0a58ca);
-        color: white;
-        border: none;
-        padding: 1rem;
-      }
+      <tbody>
+        <% if (reminders.length === 0) { %>
+          <tr>
+            <td colspan="5" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+              No reminders found
+            </td>
+          </tr>
+        <% } else { %>
+          <% reminders.forEach(reminder => { %>
+            <tr class="<%= reminder.sent ? 'opacity-75' : '' %>">
 
-      .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-      }
+              <!-- Email + Mobile Details -->
+              <td>
+                <div class="fw-semibold"><%= reminder.email %></div>
 
-      .status-badge {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9em;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .status-pending {
-        background-color: #fff3cd;
-        color: #856404;
-      }
-
-      .status-sent {
-        background-color: #d4edda;
-        color: #155724;
-      }
-
-      .btn-primary {
-        border-radius: 10px;
-        padding: 0.75rem 1.5rem;
-        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
-        border: none;
-      }
-
-      .empty-state {
-        text-align: center;
-        padding: 3rem;
-        color: #6c757d;
-      }
-
-      .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-      }
-
-      .table-hover tbody tr:hover {
-        background-color: rgba(13, 110, 253, 0.05);
-      }
-    </style>
-  </head>
-
-  <body>
-    <div class="container reminders-container">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>
-          <i class="bi bi-envelope-check me-2"></i>All Reminders
-        </h2>
-        <a href="/schedule" class="btn btn-primary">
-          <i class="bi bi-plus-circle me-2"></i>Schedule New Reminder
-        </a>
-        <a href="/dashboard" class="back-link">
-          <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
-        </a>
-      </div>
-
-      <div class="table-responsive">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th><i class="bi bi-envelope me-2"></i>Email</th>
-              <th><i class="bi bi-chat-text me-2"></i>Message</th>
-              <th><i class="bi bi-calendar-check me-2"></i>Scheduled Time</th>
-              <th><i class="bi bi-info-circle me-2"></i>Status</th>
-              <th><i class="bi bi-gear me-2"></i>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <% if (reminders.length === 0) { %>
-            <tr>
-              <td colspan="5">
-                <div class="empty-state">
-                  <i class="bi bi-inbox"></i>
-                  <h4>No reminders found</h4>
-                  <p>Schedule your first reminder to get started!</p>
+                <!-- Mobile-only message & date -->
+                <div class="d-sm-none text-muted small mt-2">
+                  <div>
+                    <i class="bi bi-chat-text me-1"></i>
+                    <%= reminder.message %>
+                  </div>
+                  <div class="mt-1">
+                    <i class="bi bi-calendar-event me-1"></i>
+                    <%= new Date(reminder.scheduledTime).toLocaleString() %>
+                  </div>
                 </div>
               </td>
-            </tr>
-            <% } else { %>
-              <% reminders.forEach(reminder => { %>
-              <tr>
-                <td><%= reminder.email %></td>
-                <td><%= reminder.message %></td>
-                <td>
-                  <%= new Date(reminder.scheduledTime).toLocaleString() %>
-                </td>
-                <td>
-                  <span
-                    class="status-badge <%= reminder.sent ? 'status-sent' : 'status-pending' %>"
-                  >
-                    <i
-                      class="bi <%= reminder.sent ? 'bi-check-circle-fill' : 'bi-clock' %>"
-                    ></i>
-                    <%= reminder.sent ? 'Sent' : 'Pending' %>
-                  </span>
-                </td>
-                <td>
-                  <!-- Edit -->
+
+              <!-- Desktop Message -->
+              <td class="d-none d-sm-table-cell text-truncate" style="max-width: 260px;">
+                <%= reminder.message %>
+              </td>
+
+              <!-- Desktop Date -->
+              <td class="d-none d-sm-table-cell">
+                <%= new Date(reminder.scheduledTime).toLocaleString() %>
+              </td>
+
+              <!-- Status -->
+              <td>
+                <span class="badge rounded-pill <%= reminder.sent ? 'bg-success' : 'bg-warning text-dark' %>">
+                  <i class="bi <%= reminder.sent ? 'bi-check-circle-fill' : 'bi-clock' %> me-1"></i>
+                  <%= reminder.sent ? 'Sent' : 'Pending' %>
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td>
+                <% if (!reminder.sent) { %>
                   <a
                     href="/reminders/edit/<%= reminder._id %>"
                     class="btn btn-sm btn-outline-primary me-2"
@@ -150,29 +87,27 @@
                     <i class="bi bi-pencil"></i>
                   </a>
 
-                  <!-- Delete -->
                   <form
                     action="/reminders/delete/<%= reminder._id %>"
                     method="POST"
                     class="d-inline"
-                    onsubmit="return confirm('Are you sure you want to delete this reminder?');"
+                    onsubmit="return confirm('Delete this reminder?');"
                   >
-                    <button
-                      type="submit"
-                      class="btn btn-sm btn-outline-danger"
-                    >
+                    <button class="btn btn-sm btn-outline-danger">
                       <i class="bi bi-trash"></i>
                     </button>
                   </form>
-                </td>
-              </tr>
-              <% }); %>
-            <% } %>
-          </tbody>
-        </table>
-      </div>
-    </div>
+                <% } else { %>
+                  <span class="text-muted small">
+                    <i class="bi bi-lock-fill me-1"></i>Locked
+                  </span>
+                <% } %>
+              </td>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  </body>
-</html>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
