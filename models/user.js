@@ -27,10 +27,10 @@ const userSchema = new mongoose.Schema({
 	OTPcode: String,
 	OTPexpiry: Date,
 	OTPlastSendAt: Date,
-	createdAt: {
-		type: Date,
-		default: Date.now,
-	}
+	resetPasswordToken: String,
+	resetPasswordExpires: Date,
+}, {
+	timestamps: true,
 })
 
 userSchema.pre("save", async function () {

@@ -18,6 +18,8 @@ import bcrypt from "bcrypt";
 import { isUserVerified } from "./middleware/auth.js";
 import { sentOtpCode } from "./middleware/auth.js";
 import {ReSentOtpCode} from "./middleware/auth.js";
+import MongoStore from "connect-mongo";
+import jwt from "jsonwebtoken";
 
 configDotenv();
 
@@ -33,11 +35,16 @@ app.use(
 		resave: false,
 		saveUninitialized: false,
 		cookie: {
+			secure: process.env.NODE_ENV === "production",
 			maxAge: 1000 * 60 * 60 * 24 * 7,
 			httpOnly: true,
 			secret: true,
 			sameSite: "lax",
 		},
+		store: MongoStore.create({
+			mongoUrl: process.env.MONGO_URI,
+			ttl: 1000 * 60 * 60 * 24 * 7,
+		})
 	})
 )
 
@@ -80,6 +87,13 @@ app.get("/about", (req, res) => {
 	});
 });
 
+app.get("/forgot-password", (req, res) => {
+	res.render("forgot-password", {
+		title: "email reminder app",
+		currentPage: "forgot-password",
+	})
+})
+
 app.get("/login", isNotAuthenticated, (req, res) => {
 	res.render("login", {
 		title: "email reminder app",
@@ -100,6 +114,49 @@ app.get("/dashboard", isAuthenticated, isUserVerified, (req, res) => {
 		currentPage: "dashboard",
 		user: req.user,
 	});
+})
+
+app.post("/forgot-password", async (req, res) => {
+	try {
+		const {email} = req.body;
+		const user = await User.findOne({email});
+		if (!user)
+		{
+			return res.render("forgot-password", {
+				title: "email reminder app",
+				currentPage: "forgot-password",
+				error: "no account with this email exist!"
+			})
+		}
+		const resetToken = jwt.sign({id: user._id}, process.env.JWT_SECRET, {
+			expiresIn: "1hr",
+		})
+		user.resetPasswordToken = resetToken;
+		user.resetPasswordExpires = Date.now() + (60 * 60 * 1000);
+		const resultUrl = `http:://${req.headers.host}/reset-password/${resetToken}`;
+		const emailOptions = {
+			to: user.email,
+			subject: "Reset Password Request",
+			html: `<h2>you requested a password reset. click the link below to reset your password:</h2>
+				<a href=${resultUrl}>reset password</a>
+				<p>the link will expire in 1 hour.</p>
+				<p>if you don't request nothing just ignore this email.</p>
+			`
+		}
+		await user.save();
+		await transporter.sendMail(emailOptions);
+		return res.render("forgot-password", {
+			title: "email reminder app",
+			currentPage: "forgot-password",
+			success: "a reset link was send to your email. check your inbox",
+		})
+	} catch (error) {
+		return res.render("forgot-password", {
+			title: "email reminder app",
+			currentPage: "forgot-password",
+			error: "error processing the request, please try again.",
+		})
+	}
 })
 
 app.post("/register", 
@@ -187,7 +244,17 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 		user.OTPcode = undefined;
 		user.OTPexpiry = undefined;
 		user.OTPlastSendAt = undefined;
+		const mailOptions = {
+			to: user.email,
+			subject: "Welcome to Email Reminder App",
+			html: `
+				<h2>Welcome to Email Reminder App</h2>
+				<p>hey ${user.name}, Your account has been successfully created</p>
+				<p>You can now use the app to schedule your important tasks and never forget a thing.</p>
+			`
+		};
 		await user.save();
+		await transporter.sendMail(mailOptions);
 		if (user.isVerified) {
 			req.login(user, (err) => {
 				if (err) {

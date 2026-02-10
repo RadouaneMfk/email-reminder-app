@@ -67,6 +67,7 @@
     "is-number": "^7.0.0",
     "is-promise": "^4.0.0",
     "jake": "^10.9.4",
+    "jsonwebtoken": "^9.0.3",
     "kareem": "^3.0.0",
     "math-intrinsics": "^1.1.0",
     "media-typer": "^1.1.0",
