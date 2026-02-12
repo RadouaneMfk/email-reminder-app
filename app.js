@@ -120,24 +120,53 @@ app.get("/reset-password/:token", (req, res) => {
 	res.render("reset-password", {
 		title: "email reminder app",
 		currentPage: "reset-password",
+		token: req.params.token,
 	});
 })
 
-app.post("/reset-password", resetPasswordValidator, handleValidationErrors, async (req, res) => {
+app.post("/reset-password/:token", resetPasswordValidator, handleValidationErrors, async (req, res) => {
 	if (req.validationErrors)
 	{
-		console.log(req.validationErrors[0].msg);
 		return res.render("reset-password", {
 			title: "email reminder app",
 			currentPage: "reset-password",
-			error: {msg: req.validationErrors[0]},
+			token: req.params.token,
+			error: req.validationErrors[0],
 		})
 	}
-	// try {
+	try {
+		const {password} = req.body;
+		const {token} = req.params;
 
-	// } catch (error) {
-		
-	// }
+		const decoded = jwt.verify(token, process.env.JWT_SECRET);
+		console.log("hhhh");
+		const user = await User.findOne({
+			_id: decoded.id,
+			resetPasswordToken: token,
+		})
+		if (!user) {
+			return res.render("reset-password", {
+				title: "email reminder app",
+				currentPage: "reset-password",
+				token,
+				error: "token invalid or has been expired",
+			})
+		}
+		const salt = await bcrypt.genSalt(10);
+		const hashedPass = await bcrypt.hash(password, salt);
+		user.password = hashedPass;
+		user.resetPasswordToken = undefined;
+		user.resetPasswordExpires = undefined;
+		await user.save();
+		return res.render("reset-password", {
+			title: "email reminder app",
+			currentPage: "reset-password",
+			token,
+			success: "password has been reset successfully, you can login now with your new password",
+		})
+	} catch (error) {
+		console.error(error.message);
+	}
 })
 
 app.post("/forgot-password", async (req, res) => {
