@@ -9,7 +9,7 @@ import expressLayout from "express-ejs-layouts";
 import DbConnect from "./config/DbConnect.js"
 import Reminder from "./models/reminder.js";
 import { isNotAuthenticated, isAuthenticated } from "./middleware/auth.js";
-import { handleValidationErrors, loginValidation, registerValidation } from "./middleware/validators.js";
+import { handleValidationErrors, loginValidation, registerValidation, resetPasswordValidator } from "./middleware/validators.js";
 import User from "./models/user.js";
 import passport from "./config/passport.js";
 import session from "express-session";
@@ -116,6 +116,30 @@ app.get("/dashboard", isAuthenticated, isUserVerified, (req, res) => {
 	});
 })
 
+app.get("/reset-password/:token", (req, res) => {
+	res.render("reset-password", {
+		title: "email reminder app",
+		currentPage: "reset-password",
+	});
+})
+
+app.post("/reset-password", resetPasswordValidator, handleValidationErrors, async (req, res) => {
+	if (req.validationErrors)
+	{
+		console.log(req.validationErrors[0].msg);
+		return res.render("reset-password", {
+			title: "email reminder app",
+			currentPage: "reset-password",
+			error: {msg: req.validationErrors[0]},
+		})
+	}
+	// try {
+
+	// } catch (error) {
+		
+	// }
+})
+
 app.post("/forgot-password", async (req, res) => {
 	try {
 		const {email} = req.body;
@@ -133,7 +157,7 @@ app.post("/forgot-password", async (req, res) => {
 		})
 		user.resetPasswordToken = resetToken;
 		user.resetPasswordExpires = Date.now() + (60 * 60 * 1000);
-		const resultUrl = `http:://${req.headers.host}/reset-password/${resetToken}`;
+		const resultUrl = `http://${req.headers.host}/reset-password/${resetToken}`;
 		const emailOptions = {
 			to: user.email,
 			subject: "Reset Password Request",

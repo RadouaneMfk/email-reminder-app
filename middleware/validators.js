@@ -50,6 +50,22 @@ export const scheduleValidation = [
 	}),
 ];
 
+export const resetPasswordValidator = [
+	body("passowrd").trim()
+	.notEmpty().withMessage("password is required")
+	.isLength({min: 8}).withMessage("password must be at least 8 characters"),
+
+	body("confirmPassword").trim()
+	.notEmpty().withMessage("confirm password is required")
+	.custom((value, {req}) => {
+		if (value !== req.body.password)
+		{
+			throw new Error("passwords do not match!");
+		}
+		return true;
+	})
+];
+
 export const handleValidationErrors = (req, res, next) => {
 	const errors = validationResult(req);
 
