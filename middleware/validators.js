@@ -12,7 +12,14 @@ export const registerValidation = [
 
 	body("password").trim()
 	.notEmpty().withMessage("password is required")
-	.isLength({min: 8}).withMessage("password must be at least 8 characters"),
+	.isLength({min: 8}).withMessage("password must be at least 8 characters")
+	.matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/)
+	.withMessage("password should contain uppercase, lowercase and a number!")
+	.custom((value, {req}) => {
+		if (value === req.body.email)
+			throw new Error('password should not contain sensitive data!');
+		return true;
+	}),
 
 	body("confirmPassword").trim()
 	.notEmpty().withMessage("please confirm your password")

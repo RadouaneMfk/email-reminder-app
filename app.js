@@ -124,22 +124,21 @@ app.get("/reset-password/:token", (req, res) => {
 	});
 })
 
+app.get('/auth/google', passport.authenticate("google", {scope: ["profile", "email"]}));
+
+app.get('/auth/google/callback', 
+		passport.authenticate("google", {failureRedirect: '/login'}),
+		(req, res) => {
+			res.redirect("/dashboard");
+		}
+)
+
 app.post("/reset-password/:token", resetPasswordValidator, handleValidationErrors, async (req, res) => {
-	if (req.validationErrors)
-	{
-		return res.render("reset-password", {
-			title: "email reminder app",
-			currentPage: "reset-password",
-			token: req.params.token,
-			error: req.validationErrors[0],
-		})
-	}
 	try {
 		const {password} = req.body;
 		const {token} = req.params;
-
+		
 		const decoded = jwt.verify(token, process.env.JWT_SECRET);
-		console.log("hhhh");
 		const user = await User.findOne({
 			_id: decoded.id,
 			resetPasswordToken: token,
@@ -149,12 +148,10 @@ app.post("/reset-password/:token", resetPasswordValidator, handleValidationError
 				title: "email reminder app",
 				currentPage: "reset-password",
 				token,
-				error: "token invalid or has been expired",
+				error: "token invalid or has been expired, please request a new password reset",
 			})
 		}
-		const salt = await bcrypt.genSalt(10);
-		const hashedPass = await bcrypt.hash(password, salt);
-		user.password = hashedPass;
+		user.password = password;
 		user.resetPasswordToken = undefined;
 		user.resetPasswordExpires = undefined;
 		await user.save();
@@ -166,6 +163,15 @@ app.post("/reset-password/:token", resetPasswordValidator, handleValidationError
 		})
 	} catch (error) {
 		console.error(error.message);
+	}
+	if (req.validationErrors)
+	{
+		return res.render("reset-password", {
+			title: "email reminder app",
+			currentPage: "reset-password",
+			token: req.params.token,
+			error: req.validationErrors[0].msg,
+		})
 	}
 })
 

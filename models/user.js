@@ -17,19 +17,21 @@ const userSchema = new mongoose.Schema({
 	},
 	password: {
 		type: String,
-		required: true,
+		required: false,
 		minlength: 8,
 	},
 	isVerified: {
 		type: Boolean,
 		default: false,
 	},
+	googleId: String,
 	OTPcode: String,
 	OTPexpiry: Date,
 	OTPlastSendAt: Date,
 	resetPasswordToken: String,
 	resetPasswordExpires: Date,
-}, {
+}, 
+{
 	timestamps: true,
 })
 
