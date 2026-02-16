@@ -85,6 +85,7 @@ app.get("/about", (req, res) => {
 		title: "email reminder app",
 		currentPage: "about",
 	});
+	
 });
 
 app.get("/forgot-password", (req, res) => {
