@@ -23,6 +23,7 @@ import jwt from "jsonwebtoken";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
+import ExpressMongoSanitize from "express-mongo-sanitize";
 
 configDotenv();
 
@@ -32,19 +33,20 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(ExpressMongoSanitize());
 app.use(helmet());
 
 const globalLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,
 	max: 100,
-	message: {error: 'to many requests, try again later'},
+	message: {error: 'too many requests, try again later'},
 });
-
+	
 const authLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,
 	max: 10,
 	skipSuccessfulRequests: true,
-	message: {error: 'too many requests, wait 15 minutes'},
+	message: {error: 'too many requests, wait 10 minutes'},
 })
 
 app.use(globalLimiter);
@@ -198,6 +200,12 @@ app.post("/reset-password/:token", resetPasswordValidator, handleValidationError
 		})
 	} catch (error) {
 		console.error(error.message);
+		return res.status(StatusCode.InternalServerError).render("reset-password", {
+			title: "email reminder app",
+			currentPage: "reset-password",
+			token,
+			error: "An error occured, try again",
+		})
 	}
 })
 
@@ -216,7 +224,7 @@ app.post("/forgot-password", async (req, res) => {
 		const resetToken = jwt.sign({id: user._id}, process.env.JWT_SECRET, {
 			expiresIn: "1hr",
 		})
-		
+
 		if (user && ((Date.now() - user.resetPasswordlastSendAt < 60 * 1000)))
 		{
 			return res.status(StatusCode.BadRequest).render("forgot-password", {
@@ -589,7 +597,7 @@ app.post("/reminders/edit/:id", isAuthenticated,
 	}
 })
 
-cron.schedule("* * * * *", async (req, res) => {
+cron.schedule("* * * * *", async () => {
 	try {
 		const now = new Date();
 		const reminders = await Reminder.find({
