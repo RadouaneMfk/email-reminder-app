@@ -20,6 +20,9 @@ import { sentOtpCode } from "./middleware/auth.js";
 import {ReSentOtpCode} from "./middleware/auth.js";
 import MongoStore from "connect-mongo";
 import jwt from "jsonwebtoken";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { StatusCode } from "express-status-code";
 
 configDotenv();
 
@@ -28,6 +31,30 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+app.use(helmet());
+
+const globalLimiter = rateLimit({
+	windowMs: 10 * 60 * 1000,
+	max: 100,
+	message: {error: 'to many requests, try again later'},
+});
+
+const authLimiter = rateLimit({
+	windowMs: 10 * 60 * 1000,
+	max: 10,
+	skipSuccessfulRequests: true,
+	message: {error: 'too many requests, wait 15 minutes'},
+})
+
+app.use(globalLimiter);
+
+app.use("/login", authLimiter);
+app.use("/register", authLimiter);
+app.use("/forgot-password", authLimiter);
+app.use("/reset-password", authLimiter);
+app.use("/verify-email", authLimiter);
+app.use("/resend-verification", authLimiter);
 
 app.use(
 	session({
@@ -38,7 +65,6 @@ app.use(
 			secure: process.env.NODE_ENV === "production",
 			maxAge: 1000 * 60 * 60 * 24 * 7,
 			httpOnly: true,
-			secret: true,
 			sameSite: "lax",
 		},
 		store: MongoStore.create({
@@ -74,43 +100,42 @@ export const transporter = nodemailer.createTransport({
 })
 
 app.get("/", (req, res) => {
-	res.render("index", {
+	res.status(StatusCode.OK).render("index", {
 		title: "email reminder app",
 		currentPage: "home",
 	});
 })
 
 app.get("/about", (req, res) => {
-	res.render("about", {
+	res.status(StatusCode.OK).render("about", {
 		title: "email reminder app",
 		currentPage: "about",
 	});
-	
 });
 
 app.get("/forgot-password", (req, res) => {
-	res.render("forgot-password", {
+	res.status(StatusCode.OK).render("forgot-password", {
 		title: "email reminder app",
 		currentPage: "forgot-password",
 	})
 })
 
 app.get("/login", isNotAuthenticated, (req, res) => {
-	res.render("login", {
+	res.status(StatusCode.OK).render("login", {
 		title: "email reminder app",
 		currentPage: "login",
 	})
 })
 
 app.get("/register", isNotAuthenticated, (req, res) => {
-	res.render("register", {
+	res.status(StatusCode.OK).render("register", {
 		title: "email reminder app",
 		currentPage: "register",
 	})
 })
 
 app.get("/dashboard", isAuthenticated, isUserVerified, (req, res) => {
-	res.render("dashboard", {
+	res.status(StatusCode.OK).render("dashboard", {
 		title: "email reminder app",
 		currentPage: "dashboard",
 		user: req.user,
@@ -118,7 +143,7 @@ app.get("/dashboard", isAuthenticated, isUserVerified, (req, res) => {
 })
 
 app.get("/reset-password/:token", (req, res) => {
-	res.render("reset-password", {
+	res.status(StatusCode.OK).render("reset-password", {
 		title: "email reminder app",
 		currentPage: "reset-password",
 		token: req.params.token,
@@ -135,6 +160,15 @@ app.get('/auth/google/callback',
 )
 
 app.post("/reset-password/:token", resetPasswordValidator, handleValidationErrors, async (req, res) => {
+	if (req.validationErrors)
+	{
+		return res.status(StatusCode.BadRequest).render("reset-password", {
+			title: "email reminder app",
+			currentPage: "reset-password",
+			token: req.params.token,
+			error: req.validationErrors[0].msg,
+		})
+	}
 	try {
 		const {password} = req.body;
 		const {token} = req.params;
@@ -144,8 +178,8 @@ app.post("/reset-password/:token", resetPasswordValidator, handleValidationError
 			_id: decoded.id,
 			resetPasswordToken: token,
 		})
-		if (!user) {
-			return res.render("reset-password", {
+		if (!user || user.resetPasswordExpires < Date.now()) {
+			return res.status(StatusCode.BadRequest).render("reset-password", {
 				title: "email reminder app",
 				currentPage: "reset-password",
 				token,
@@ -165,15 +199,6 @@ app.post("/reset-password/:token", resetPasswordValidator, handleValidationError
 	} catch (error) {
 		console.error(error.message);
 	}
-	if (req.validationErrors)
-	{
-		return res.render("reset-password", {
-			title: "email reminder app",
-			currentPage: "reset-password",
-			token: req.params.token,
-			error: req.validationErrors[0].msg,
-		})
-	}
 })
 
 app.post("/forgot-password", async (req, res) => {
@@ -185,14 +210,23 @@ app.post("/forgot-password", async (req, res) => {
 			return res.render("forgot-password", {
 				title: "email reminder app",
 				currentPage: "forgot-password",
-				error: "no account with this email exist!"
+				success: "if this account exist, a reset link was sent. check inbox"
 			})
 		}
 		const resetToken = jwt.sign({id: user._id}, process.env.JWT_SECRET, {
 			expiresIn: "1hr",
 		})
+		if (user && ((Date.now() - user.resetPasswordlastSendAt < 60 * 1000)))
+		{
+			return res.status(StatusCode.BadRequest).render("forgot-password", {
+				title: "email reminder app",
+				currentPage: "forgot-password",
+				error: "please wait 1 minute before request new reset password",
+			})
+		}
 		user.resetPasswordToken = resetToken;
 		user.resetPasswordExpires = Date.now() + (60 * 60 * 1000);
+		user.resetPasswordlastSendAt = Date.now();
 		const resultUrl = `http://${req.headers.host}/reset-password/${resetToken}`;
 		const emailOptions = {
 			to: user.email,
@@ -208,10 +242,10 @@ app.post("/forgot-password", async (req, res) => {
 		return res.render("forgot-password", {
 			title: "email reminder app",
 			currentPage: "forgot-password",
-			success: "a reset link was send to your email. check your inbox",
+			success: "if this account exist, a reset link was sent. check inbox",
 		})
 	} catch (error) {
-		return res.render("forgot-password", {
+		return res.status(StatusCode.BadRequest).render("forgot-password", {
 			title: "email reminder app",
 			currentPage: "forgot-password",
 			error: "error processing the request, please try again.",
@@ -225,7 +259,7 @@ app.post("/register",
 		handleValidationErrors,
 		async (req, res) => {
 			if (req.validationErrors) {
-				return res.render("register", {
+				return res.status(StatusCode.BadRequest).render("register", {
 					title: "email reminder app",
 					currentPage: "register",
 					validationErrors: req.validationErrors,
@@ -237,7 +271,7 @@ app.post("/register",
 				const existUser = await User.findOne({email});
 				if (existUser)
 				{
-					return res.render("register", {
+					return res.status(StatusCode.BadRequest).render("register", {
 						title: "email reminder app",
 						currentPage: "register",
 						validationErrors: [{msg: "user already registered!"}],
@@ -259,7 +293,7 @@ app.post("/register",
 				});
 			} catch (error) {
 				console.error(error);
-				res.render("register", {
+				res.status(StatusCode.BadRequest).render("register", {
 					title: "email remider app",
 					currentPage: "register",
 					validationErrors: [{msg: "An error occured, please try again"}],
@@ -283,7 +317,7 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 		const user = await User.findById(req.user.id);
 		if (!user.OTPexpiry || user.OTPexpiry < Date.now())
 		{
-			return res.render("verify-email", {
+			return res.status(StatusCode.BadRequest).render("verify-email", {
 				title: "email reminder app",
 				currentPage: "verify-email",
 				error: "code invalid or has been expired!",
@@ -293,7 +327,7 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 		const isMatchOTP = await user.compareOTP(code);
 		if (!isMatchOTP)
 		{
-			return res.render("verify-email", {
+			return res.status(StatusCode.BadRequest).render("verify-email", {
 				title: "email reminder app",
 				currentPage: "verify-email",
 				error: "code invalid or has been expired!",
@@ -343,7 +377,7 @@ app.post("/resend-verification", isAuthenticated, async (req, res) => {
 			success: "another verification code has been sent to you email!",
 		})
 	} catch (error) {
-		return res.render("verify-email", {
+		return res.status(StatusCode.BadRequest).render("verify-email", {
 			title: "email reminder app",
 			currentPage: "verify-email",
 			email: req.user.email,
@@ -359,7 +393,7 @@ app.post("/login",
 		(req, res, next) => {
 			if (req.validationErrors)
 			{
-				return res.render("login", {
+				return res.status(StatusCode.BadRequest).render("login", {
 					title: "email reminder app",
 					currentPage: "login",
 					errors: req.validationErrors,
@@ -370,7 +404,7 @@ app.post("/login",
 					return next(err);
 
 					if (!user) {
-						return res.render("login", {
+						return res.status(StatusCode.BadRequest).render("login", {
 							title: "email reminder app",
 							currentPage: "login",
 							errors: [{msg: info.message || "Invalid email or password!"}],
@@ -448,7 +482,7 @@ app.post("/schedule",
 		async (req, res) => {
 			if (req.validationErrors)
 			{
-				return res.render("schedule", {
+				return res.status(StatusCode.BadRequest).render("schedule", {
 					title: "email reminder app",
 					currentPage: "schedule",
 					userEmail: req.user.email,
@@ -467,7 +501,7 @@ app.post("/schedule",
 			return res.redirect("schedule?success=true");
 		} catch (error) {
 			console.error(error);
-			return res.render("schedule", {
+			return res.status(StatusCode.BadRequest).render("schedule", {
 				title: "email reminder app",
 				currentPage: "schedule",
 				userEmail: req.user.email,
@@ -523,7 +557,7 @@ app.post("/reminders/edit/:id", isAuthenticated,
 			if (!reminder || reminder.sent)
 				return res.redirect("/reminders");
 			if (req.validationErrors) {
-				return res.render("edit-reminder", {
+				return res.status(StatusCode.BadRequest).render("edit-reminder", {
 					title: "email reminder app",
 					currentPage: "edit-reminder",
 					reminder,

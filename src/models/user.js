@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema({
 	OTPlastSendAt: Date,
 	resetPasswordToken: String,
 	resetPasswordExpires: Date,
+	resetPasswordlastSendAt: Date,
 }, 
 {
 	timestamps: true,
