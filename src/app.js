@@ -216,6 +216,7 @@ app.post("/forgot-password", async (req, res) => {
 		const resetToken = jwt.sign({id: user._id}, process.env.JWT_SECRET, {
 			expiresIn: "1hr",
 		})
+		
 		if (user && ((Date.now() - user.resetPasswordlastSendAt < 60 * 1000)))
 		{
 			return res.status(StatusCode.BadRequest).render("forgot-password", {
