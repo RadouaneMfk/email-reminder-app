@@ -44,7 +44,7 @@ const globalLimiter = rateLimit({
 	
 const authLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,
-	max: 10,
+	max: 5,
 	skipSuccessfulRequests: true,
 	message: {error: 'too many requests, wait 10 minutes'},
 })
