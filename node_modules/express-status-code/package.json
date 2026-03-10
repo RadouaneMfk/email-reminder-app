@@ -1,0 +1,22 @@
+{
+  "name": "express-status-code",
+  "version": "1.0.0",
+  "description": "Constants http codes and functions for express.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist/", "LICENSE", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "author": "Colderry <c0l4e6r7@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/colderry/express-status-code.git"
+  },
+  "keywords": ["express", "http", "statuscodes", "http-status-codes", "status", "codes"],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^4.7.4"
+  }
+}
