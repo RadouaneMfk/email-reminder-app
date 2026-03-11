@@ -620,8 +620,6 @@ cron.schedule("* * * * *", async () => {
 	}
 })
 
-// app.listen(port, ()=> {
-// 	console.log(`server is running at http://localhost:${port}`);
-// });
-
-export default app;
+app.listen(port, ()=> {
+	console.log(`server is running at http://localhost:${port}`);
+});
