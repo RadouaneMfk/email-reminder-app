@@ -27,7 +27,7 @@ export async function sentOtpCode(user) {
 	user.OTPlastSendAt = Date.now();
 	await user.save();
 	await resend.emails.send({
-		from: process.env.EMAIL_USER,
+		from: 'onboarding@resend.dev',
 		to: user.email,
 		subject: "your account verification code",
 		text: `your verification code is ${code}, will expiry in 10 minutes`,
