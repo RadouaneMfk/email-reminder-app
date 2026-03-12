@@ -360,7 +360,7 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 			`
 		};
 		await user.save();
-		await transporter.sendMail(mailOptions);
+		// await transporter.sendMail(mailOptions);
 		if (user.isVerified) {
 			req.login(user, (err) => {
 				if (err) {
