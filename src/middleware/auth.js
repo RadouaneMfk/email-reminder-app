@@ -32,7 +32,7 @@ export async function sentOtpCode(user) {
 		  'api-key': process.env.BREVO_API_KEY,
 		},
 		body: JSON.stringify({
-		  sender: { name: 'Email Reminder App', email: 'noreply@emailreminder.com' },
+		  sender: { name: 'Email Reminder App', email: 'rami00mohamed33@gmail.com' },
 		  to: [{ email: user.email }],
 		  subject: 'Your account verification code',
 		  textContent: `Your verification code is ${code}, it will expire in 10 minutes`,
