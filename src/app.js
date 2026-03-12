@@ -28,6 +28,7 @@ import {Resend} from "resend";
 
 configDotenv();
 
+console.log('KEY:', process.env.RESEND_API_KEY);
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
