@@ -631,7 +631,7 @@ app.listen(port, async ()=> {
 	try {
 		const result = await resend.emails.send({
 		  from: 'onboarding@resend.dev',
-		  to: 'businessrdwan@gmail.com', // ← put your real email here
+		  to: 'rami00mohamed33@gmail.com', // ← put your real email here
 		  subject: 'Test',
 		  text: 'Test email from Railway',
 		});
