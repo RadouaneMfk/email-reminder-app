@@ -24,8 +24,11 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
 import ExpressMongoSanitize from "express-mongo-sanitize";
+import {Resend} from "resend";
 
 configDotenv();
+
+export const resend = new Resend(process.env.RESEND_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -95,10 +98,12 @@ app.set("views", path.join(__dirname, "views"));
 DbConnect();
 
 export const transporter = nodemailer.createTransport({
-	service: 'SendGrid',
+	host: 'smtp.gmail.com',
+	port: 587,
+	secure: false,
 	auth: {
-		user: "apiKey",
-		pass: process.env.SENDGRID_API_KEY,
+		user: process.env.EMAIL_USER,
+		pass: process.env.EMAIL_PASS,
 	}
 })
 

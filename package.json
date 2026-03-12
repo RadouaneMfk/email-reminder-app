@@ -110,6 +110,7 @@
     "range-parser": "^1.2.1",
     "raw-body": "^3.0.2",
     "readdirp": "^3.6.0",
+    "resend": "^6.9.3",
     "router": "^2.2.0",
     "safer-buffer": "^2.1.2",
     "semver": "^7.7.3",

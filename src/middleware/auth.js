@@ -3,6 +3,7 @@ import User from "../models/user.js";
 import nodemailer from "nodemailer";
 import { transporter } from "../app.js";
 import bcrypt from "bcrypt";
+import { resend } from "../app.js";
 
 export const isAuthenticated = (req, res, next) => {
 	if (req.isAuthenticated())
@@ -25,7 +26,7 @@ export async function sentOtpCode(user) {
 	user.OTPexpiry = Date.now() + 10 * 60 * 1000;
 	user.OTPlastSendAt = Date.now();
 	await user.save();
-	await transporter.sendMail({
+	await resend.emails.send({
 		from: process.env.EMAIL_USER,
 		to: user.email,
 		subject: "your account verification code",
