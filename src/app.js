@@ -95,12 +95,10 @@ app.set("views", path.join(__dirname, "views"));
 DbConnect();
 
 export const transporter = nodemailer.createTransport({
-	host: 'smtp.gmail.com',
-	port: 587,
-	secure: false,
+	service: 'SendGrid',
 	auth: {
-		user: process.env.EMAIL_USER,
-		pass: process.env.EMAIL_PASS,
+		user: "apiKey",
+		pass: process.env.SENDGRID_API_KEY,
 	}
 })
 
