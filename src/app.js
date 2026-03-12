@@ -28,8 +28,7 @@ import {Resend} from "resend";
 
 configDotenv();
 
-console.log('KEY:', process.env.RESEND_API_KEY);
-export const resend = new Resend('re_PwaZ3ptE_9AcwfhWPwHqP9fcuXSqY6ko1');
+export const resend = new Resend(process.env.RESEND_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -627,6 +626,17 @@ cron.schedule("* * * * *", async () => {
 	}
 })
 
-app.listen(port, ()=> {
+app.listen(port, async ()=> {
 	console.log(`server is running at http://localhost:${port}`);
+	try {
+		const result = await resend.emails.send({
+		  from: 'onboarding@resend.dev',
+		  to: 'businessrdwan@gmail.com', // ← put your real email here
+		  subject: 'Test',
+		  text: 'Test email from Railway',
+		});
+		console.log('TEST RESULT:', JSON.stringify(result));
+	  } catch (err) {
+		console.error('TEST ERROR:', err);
+	  }
 });
