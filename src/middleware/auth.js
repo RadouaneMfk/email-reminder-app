@@ -32,6 +32,8 @@ export async function sentOtpCode(user) {
 		subject: "your account verification code",
 		text: `your verification code is ${code}, will expiry in 10 minutes`,
 	})
+	console.log("hhhhhhh");
+	
 }
 
 export async function ReSentOtpCode(user) {
