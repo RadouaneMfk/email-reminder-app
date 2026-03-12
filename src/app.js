@@ -24,12 +24,8 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
 import ExpressMongoSanitize from "express-mongo-sanitize";
-import SibApiV3Sdk from '@getbrevo/brevo';
 
 configDotenv();
-
-export const client = new SibApiV3Sdk.TransactionalEmailsApi();
-client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

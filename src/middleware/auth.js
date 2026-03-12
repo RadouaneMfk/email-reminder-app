@@ -3,7 +3,6 @@ import User from "../models/user.js";
 import nodemailer from "nodemailer";
 import { transporter } from "../app.js";
 import bcrypt from "bcrypt";
-import { client } from "../app.js";
 
 export const isAuthenticated = (req, res, next) => {
 	if (req.isAuthenticated())
@@ -26,17 +25,22 @@ export async function sentOtpCode(user) {
 	user.OTPexpiry = Date.now() + 10 * 60 * 1000;
 	user.OTPlastSendAt = Date.now();
 	await user.save();
-	const email = new Brevo.SendSmtpEmail();
-	email.subject = 'Your account verification code';
-	email.textContent = `Your verification code is ${code}, it will expire in 10 minutes`;
-	email.sender = { name: 'Email Reminder App', email: 'noreply@yourgmail.com' };
-	email.to = [{ email: user.email }];
-	try {
-		const result = await client.sendTransacEmail(email);
-		console.log('Brevo result:', JSON.stringify(result));
-	  } catch (err) {
-		console.error('Brevo error:', err);
-	}
+	const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+		method: 'POST',
+		headers: {
+		  'Content-Type': 'application/json',
+		  'api-key': process.env.BREVO_API_KEY,
+		},
+		body: JSON.stringify({
+		  sender: { name: 'Email Reminder App', email: 'noreply@emailreminder.com' },
+		  to: [{ email: user.email }],
+		  subject: 'Your account verification code',
+		  textContent: `Your verification code is ${code}, it will expire in 10 minutes`,
+		}),
+	  });
+	
+	  const result = await response.json();
+	  console.log('Brevo result:', JSON.stringify(result));
 }
 
 export async function ReSentOtpCode(user) {
