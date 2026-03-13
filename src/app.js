@@ -23,6 +23,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
 import ExpressMongoSanitize from "express-mongo-sanitize";
+import {xss} from "express-xss-sanitizer"
 
 configDotenv();
 
@@ -34,7 +35,7 @@ app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
 
 app.use(ExpressMongoSanitize());
-app.use(helmet());
+// app.use(helmet());
 
 const globalLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,
@@ -86,6 +87,7 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(xss());
 app.set("view engine", "ejs");
 app.use(expressLayout);
 app.set("layout", "layout");
