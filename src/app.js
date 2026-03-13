@@ -228,7 +228,7 @@ app.post("/forgot-password", async (req, res) => {
 		user.resetPasswordToken = resetToken;
 		user.resetPasswordExpires = Date.now() + (60 * 60 * 1000);
 		user.resetPasswordlastSendAt = Date.now();
-		const resultUrl = `http://${req.headers.host}/reset-password/${resetToken}`;
+		const resultUrl = `${req.protocol}://${req.headers.host}/reset-password/${resetToken}`;
 		await user.save();
 		await fetch('https://api.brevo.com/v3/smtp/email', {
 			method: 'POST',
@@ -242,7 +242,7 @@ app.post("/forgot-password", async (req, res) => {
 			  subject: 'Reset Password Request',
 			  htmlContent: `
 				<h2>you requested a password reset. click the link below to reset your password:</h2>
-				<a href=${resultUrl}>reset password</a>
+				<a href="${resultUrl}">reset password</a>
 				<p>the link will expire in 1 hour.</p>
 				<p>if you don't request nothing just ignore this email.</p>
 			  `,
