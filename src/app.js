@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import path from "path";
 import express from "express";
 import cron from "node-cron";
-import nodemailer from "nodemailer";
 import {fileURLToPath} from "url";
 import expressLayout from "express-ejs-layouts";
 import DbConnect from "./config/DbConnect.js"
@@ -93,16 +92,6 @@ app.set("layout", "layout");
 app.set("views", path.join(__dirname, "views"));
 
 DbConnect();
-
-export const transporter = nodemailer.createTransport({
-	host: 'smtp.gmail.com',
-	port: 587,
-	secure: false,
-	auth: {
-		user: process.env.EMAIL_USER,
-		pass: process.env.EMAIL_PASS,
-	}
-})
 
 app.get("/", (req, res) => {
 	res.status(StatusCode.OK).render("index", {
@@ -240,17 +229,25 @@ app.post("/forgot-password", async (req, res) => {
 		user.resetPasswordExpires = Date.now() + (60 * 60 * 1000);
 		user.resetPasswordlastSendAt = Date.now();
 		const resultUrl = `http://${req.headers.host}/reset-password/${resetToken}`;
-		const emailOptions = {
-			to: user.email,
-			subject: "Reset Password Request",
-			html: `<h2>you requested a password reset. click the link below to reset your password:</h2>
+		await user.save();
+		await fetch('https://api.brevo.com/v3/smtp/email', {
+			method: 'POST',
+			headers: {
+			  'Content-Type': 'application/json',
+			  'api-key': process.env.BREVO_API_KEY,
+			},
+			body: JSON.stringify({
+			  sender: { name: 'Email Reminder App', email: process.env.BREVO_EMAIL_SENDER },
+			  to: [{ email: user.email }],
+			  subject: 'Reset Password Request',
+			  htmlContent: `
+				<h2>you requested a password reset. click the link below to reset your password:</h2>
 				<a href=${resultUrl}>reset password</a>
 				<p>the link will expire in 1 hour.</p>
 				<p>if you don't request nothing just ignore this email.</p>
-			`
-		}
-		await user.save();
-		await transporter.sendMail(emailOptions);
+			  `,
+			}),
+		  });
 		return res.render("forgot-password", {
 			title: "email reminder app",
 			currentPage: "forgot-password",
@@ -350,17 +347,24 @@ app.post("/verify-email", isAuthenticated, async (req, res) => {
 		user.OTPcode = undefined;
 		user.OTPexpiry = undefined;
 		user.OTPlastSendAt = undefined;
-		const mailOptions = {
-			to: user.email,
-			subject: "Welcome to Email Reminder App",
-			html: `
+		await user.save();
+		await fetch('https://api.brevo.com/v3/smtp/email', {
+			method: 'POST',
+			headers: {
+			  'Content-Type': 'application/json',
+			  'api-key': process.env.BREVO_API_KEY,
+			},
+			body: JSON.stringify({
+			  sender: { name: 'Email Reminder App', email: process.env.BREVO_EMAIL_SENDER },
+			  to: [{ email: user.email }],
+			  subject: 'Welcome to Email Reminder App',
+			  htmlContent: `
 				<h2>Welcome to Email Reminder App</h2>
 				<p>hey ${user.name}, Your account has been successfully created</p>
 				<p>You can now use the app to schedule your important tasks and never forget a thing.</p>
-			`
-		};
-		await user.save();
-		// await transporter.sendMail(mailOptions);
+			  `,
+			}),
+		  });
 		if (user.isVerified) {
 			req.login(user, (err) => {
 				if (err) {
@@ -609,12 +613,19 @@ cron.schedule("* * * * *", async () => {
 		})
 		for (const reminder of reminders)
 		{
-			await transporter.sendMail({
-				from: process.env.EMAIL_USER,
-				to: reminder.email,
-				text: reminder.message,
-				subject: "email reminder app",
-			})
+			await fetch('https://api.brevo.com/v3/smtp/email', {
+				method: 'POST',
+				headers: {
+				  'Content-Type': 'application/json',
+				  'api-key': process.env.BREVO_API_KEY,
+				},
+				body: JSON.stringify({
+				  sender: { name: 'Email Reminder App', email: process.env.BREVO_EMAIL_SENDER },
+				  to: [{ email: reminder.email }],
+				  subject: 'Email Reminder App',
+				  textContent: reminder.message,
+				}),
+			  });
 			reminder.sent = true;
 			await reminder.save();
 		}
