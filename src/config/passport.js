@@ -36,7 +36,7 @@ passport.use(
 	{
 		clientID: process.env.CLIENT_GOOGLE_ID,
 		clientSecret: process.env.CLIENT_GOOGLE_SECRET,
-		callbackURL: "http://localhost:3000/auth/google/callback",
+		callbackURL: process.env.GOOGLE_CALLBACK_URL || "https://email-reminder-app-production.up.railway.app/auth/google/callback",
 	},
 	async (accessToken, refreshToken, profile, done) => {
 		try {
