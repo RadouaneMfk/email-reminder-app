@@ -23,8 +23,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
 import ExpressMongoSanitize from "express-mongo-sanitize";
-import {xss} from "express-xss-sanitizer";
-import { cors } from "cors";
+import {xss} from "express-xss-sanitizer"
 
 configDotenv();
 
