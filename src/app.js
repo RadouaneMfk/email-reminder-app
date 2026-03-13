@@ -262,7 +262,6 @@ app.post("/forgot-password", async (req, res) => {
 	}
 })
 
-
 app.post("/register", 
 		isNotAuthenticated,
  		registerValidation,
