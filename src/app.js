@@ -35,7 +35,18 @@ app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
 
 app.use(ExpressMongoSanitize());
-// app.use(helmet());
+app.use((req, res, next) => {
+	res.locals.nonce = require("crypto").randomBytes(16).toString("base64");
+	next();
+  });
+  app.use(helmet({
+	contentSecurityPolicy: {
+	  directives: {
+		...helmet.contentSecurityPolicy.getDefaultDirectives(),
+		"script-src": ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+	  },
+	},
+  }));
 
 const globalLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,

@@ -258,7 +258,7 @@
   </div>
 </section>
 
-<script>
+<script nonce="<%= nonce %>">
   document.querySelectorAll(".toggle-password").forEach(icon => {
     icon.addEventListener("click", () => {
       const input = document.getElementById(icon.dataset.target);
