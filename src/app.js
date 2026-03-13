@@ -23,7 +23,8 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
 import ExpressMongoSanitize from "express-mongo-sanitize";
-import {xss} from "express-xss-sanitizer"
+import {xss} from "express-xss-sanitizer";
+import { cors } from "cors";
 
 configDotenv();
 
@@ -35,11 +36,6 @@ app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
 
 app.use(ExpressMongoSanitize());
-
-app.use((req, res, next) => {
-	res.locals.nonce = require("crypto").randomBytes(16).toString("base64");
-	next();
-});
 
 app.use(helmet());
 
