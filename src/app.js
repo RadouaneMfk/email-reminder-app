@@ -24,6 +24,7 @@ import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
 import ExpressMongoSanitize from "express-mongo-sanitize";
 import {xss} from "express-xss-sanitizer"
+import { title } from "process";
 
 configDotenv();
 
@@ -637,6 +638,14 @@ cron.schedule("* * * * *", async () => {
 	}
 })
 
-app.listen(port, async ()=> {
+
+app.use((req, res) => {
+	return res.status(StatusCode.NotFound).render("404", {
+		title: "404 - page not found",
+		currentPage: "404",
+	})
+})
+
+app.listen(port, async () => {
 	console.log(`server is running at http://localhost:${port}`);
 });
