@@ -2,6 +2,8 @@
 
 A full-stack web application that lets users schedule email reminders so they never forget important tasks. Built with Node.js, Express, EJS, and MongoDB.
 
+the front-end isn't the best, bcz i'm focusing on the back-end more, i just have basic front-end skills.
+
 ## 🌐 Live Demo
 
 [https://email-reminder-app-production.up.railway.app](https://email-reminder-app-production.up.railway.app)

@@ -24,7 +24,6 @@ import rateLimit from "express-rate-limit";
 import { StatusCode } from "express-status-code";
 import ExpressMongoSanitize from "express-mongo-sanitize";
 import {xss} from "express-xss-sanitizer"
-import { title } from "process";
 
 configDotenv();
 
@@ -42,14 +41,14 @@ app.use(helmet());
 const globalLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,
 	max: 100,
-	message: {error: 'too many requests, try again later'},
+	message: {error: 'hhhh too many requests, try again later'},
 });
 	
 const authLimiter = rateLimit({
 	windowMs: 10 * 60 * 1000,
-	max: 5,
+	max: 20,
 	skipSuccessfulRequests: true,
-	message: {error: 'too many requests, wait 10 minutes'},
+	message: {error: 'hhhhh too many requests, wait 10 minutes'},
 })
 
 app.use(globalLimiter);
